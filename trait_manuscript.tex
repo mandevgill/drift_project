@@ -1,0 +1,1161 @@
+\documentclass[12pt]{article}
+
+\setlength{\oddsidemargin}{0.25in}
+\setlength{\textwidth}{6in}
+\setlength{\topmargin}{-0.5in}
+\setlength{\textheight}{9in}
+\renewcommand{\baselinestretch}{2} 
+
+
+
+\usepackage{latexsym}
+\usepackage{graphicx}
+\usepackage[reqno]{amsmath}
+\usepackage{natbib}
+%\usepackage{nopageno}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{color}
+
+
+\newcommand{\todo}[1]{\begin{center}To do: {\bf #1}\end{center}}
+\newcommand{\parplan}[2]{\noindent {\bf Par #1}:  #2}
+
+\newcommand{\cprob}[2]{\ensuremath{\text{Pr}\left(#1 \,|\,#2\right)}}  
+\newcommand{\prob}[1]{\ensuremath{\text{Pr}\left(#1 \right)}}
+\newcommand{\genealogy}{\ensuremath{\mathbf{g}}}
+\newcommand{\coalintvec}{\ensuremath{\mathbf{u}}}
+\newcommand{\coalintcomp}{\ensuremath{u}}
+\newcommand{\coaltime}{\ensuremath{t}}
+\newcommand{\sampletimecomp}{\ensuremath{s}}
+\newcommand{\sampletimevec}{\ensuremath{\mathbf{s}}}
+\newcommand{\popsizevec}{\ensuremath{\boldsymbol{\theta}}}
+\newcommand{\popsizecomp}{\ensuremath{\theta}}
+\newcommand{\logpopsizevec}{\ensuremath{\boldsymbol{\gamma}}}
+\newcommand{\logpopsizecomp}{\ensuremath{\gamma}}
+\newcommand{\scaledpop}{\ensuremath{\lambda}}
+\newcommand{\theorpopsize}{\ensuremath{N_e}}
+\newcommand{\samplesubintvec}{\ensuremath{\mathbf{w}}}
+\newcommand{\samplesubintcomp}{\ensuremath{w}}
+\newcommand{\gmrfprec}{\ensuremath{\tau}}
+\newcommand{\gmrfdist}{\ensuremath{\delta}}
+\newcommand{\gammashape}{\ensuremath{\alpha}}
+\newcommand{\gammainscale}{\ensuremath{\beta}}
+\newcommand{\scalingfactor}{\ensuremath{f}}
+\newcommand{\tuningconst}{\ensuremath{F}}
+\newcommand{\substpar}{\ensuremath{\boldsymbol{\Phi}}}
+\newcommand{\popgenpar}{\ensuremath{\boldsymbol{\Theta}}}
+
+\newcommand{\mininchange}[1]{{\color{red} #1}}
+
+
+\begin{document}
+
+\bibliographystyle{mbe}
+
+
+%\title{Estimating effective population size with a random walk smoothing prior}
+%\title{Smoothing generalized skyplots with a Gaussian Markov random field prior}
+\title{\vspace{-2cm}
+{\LARGE \bf Research Article} \\
+  Diffusion Models for Phylogenetic Trait Evolution}
+
+\vspace{0.2cm}
+
+\author{Mandev S. Gill$^1$ and Marc A. Suchard$^{1,2,3}$}
+
+\date{}
+
+\maketitle
+
+\begin{center}
+  $^1$Department of Biostatistics, Jonathan and Karin Fielding School of Public Health, University
+  of California, Los Angeles, United States\\
+  $^2$Department of Biomathematics, David Geffen School of Medicine at UCLA, University of California, 
+  Los Angeles, United States \\
+  $^3$Department of Human Genetics, David Geffen School of Medicine at UCLA, Universtiy of California, 
+  Los Angeles, United States \\
+\end{center}
+
+\begin{center}
+  \setlength{\baselineskip}{0.7cm}
+  {\bf Running head}: Diffusion Models for Trait Evolution \\ \ \\
+  {\bf Keywords}: Phylogenetics, Phylogeography, Brownian Motion, Ornstein-Uhlenbeck Process, Trait Evolution \\ \ \\
+  {\bf Corresponding Author}: \\ 
+  Marc A. Suchard \\
+  695 Charles E. Young Dr., South \\
+  Los Angeles, CA 90095-7088 \\
+  Tel: (310) 825-7442 \\
+  Fax:  (310) 825-8685 \\
+  Email: \url{msuchard@ucla.edu}
+\end{center}
+
+\clearpage
+
+
+
+
+
+
+\begin{abstract}
+Needs to be written 
+\end{abstract}
+
+\clearpage
+
+
+\section{Introduction} 
+
+Phylogenetic inference has emerged as an important tool for understanding patterns of molecular sequence variation
+over time.  Along with the increasing availability of molecular sequence data, there has been a growth of associated nonsequence data,
+underscoring the need for integrated models of phylogenetic reconstruction, and sequence and trait evolution on phylogenies. (expand this)
+\par
+Much of the development of trait evolution models has been motivated by phylogenetic comparative approaches focusing
+on phenotypic traits.  A proper understanding of patterns of correlation between traits can be achieved only by accounting for
+their shared evolutionary history \citep{Felsenstein1985, Harvey1991}, and comparative methods focus on relating observed phenotype information to an 
+evolutionary history. (Need application examples here)
+\par
+Trait evolution has been tackled from another angle in phylogeographic approaches
+focusing on geographic locations rather than phenotypic traits.  Evolutionary change is best understood when accounting for its geographic context, 
+and phylogeographic inference methods aim to connect the evolutionary and spatial history of a population.  Phylogeographic techniques have allowed
+researchers to better understand the origin, spread, and dynamics of emerging infectious diseases.  Examples include the
+the human influenza A virus \citep{Rambaut2008, Russell2008, Smith2009, Lemey09}, rabies
+viruses \citep{Biek2007, Seetahal2013}, and hepatitis B virus genotype F \citep{Mello2013}.
+\par
+While methods for phenotypic analyses and phylogeographic analyses are developed with different data in mind, they 
+address similar situations and it is appropriate to speak more generally of trait evolution.  Two key components required
+for modeling phylogenetic trait evolution are a method for incorporating phylogenetic information and a model of an evolutionary
+process on a phylogeny.  Many popular approaches first reconstruct a phylogenetic tree and condition inferences pertaining to the trait 
+evolution process on this fixed tree.  
+However, computational advances, particularly in Markov chain Monte Carlo sampling techniques,
+have made it possible to control for phylogenetic uncertainty (as well as uncertainty in other important model
+parameters)
+through integrated models that jointly estimate parameters of interest \citep{Huelsenbeck03, Lemey2010}.
+\par
+The evolution of discrete traits has typically been modeled with continous-time Markov chains \citep{Felsenstein81, Pagel1999, Lemey2009}, 
+analogous to substitution models for molecular sequence characters.  However, phenotypic and geographic traits are often continuously distributed,
+and while meaningful inferences may still be made partitioning the state space into finite parts, stochastic processes with continuous states spaces
+represent a more natural approach.  A popular choice to model continous trait evolution is Brownian diffusion \citep{Felsenstein1985}.
+Notably, \citet{Lemey2010} have recently developed a computationally efficient Brownian diffusion model for evolution of multivariate traits in 
+a Bayesian framework that integrates it with models for phylogenetic reconstruction and molecular evolution.
+\par
+Notably, their full probabilistic approach accounts for uncertainty in the phylogeny, demographic history and evolutionary
+parameters.  Trait evolution is modeled as a multivariate time-scaled Brownian diffusion process with a zero-mean displacement (or, in other words,
+neutral drift).  
+\par
+While adopting a Brownian diffusion process is a popular and useful approach, it may not appropriately describe the evolutionary 
+process in certain situations.  There may, for example, be a directional trend in the evolutionary process or there may be selection toward an optimal
+trait value.  Such scenarios are more realistically modeled by more sophisticated diffusion models that build on standard Brownian diffusion.  
+\par
+(paragraph describing need for non-zero drift, refer to Pagel1999 review paper for motivation and development in this area)
+\par
+(paragraph describing need for modeling selection toward optimal trait, cite exiting work making use of OU process, point out how we 
+differ from them in our integrated bayesian framework and in allowing multivariate traits)
+\par
+(paragraph describing our models and how they build on Lemey2010.  Mention advantages of multivariate implementation, cite Bartoszek2012 and
+point out how geographic coordinates are multivariate.  Point out need for our computationally efficient Bayesian framework that accounts for
+phylogenetic uncertainty)
+\par
+(description of what we do in this paper)
+
+\section{Methods}
+
+We start by assuming we have a dataset of $N$ aligned molecular sequences $\textbf{X}=(\textbf{X}_1,\dots,\textbf{X}_N)$ along with 
+$N$ associated $d$-dimensional, continuously varying traits $\textbf{Y}=(\textbf{Y}_1,\dots,\textbf{Y}_N)$.  The sequence and trait data 
+correspond to the tips of an unknown yet estimable phylogenetic tree $\tau$.  Later we will discuss accounting 
+for phylogenetic uncertainty, modeling the molecular evolution process giving rise to $\textbf{X}$ and integrating it
+with a model for trait evolution.  But first, we explore trait evolution on a fixed phylogeny via diffusion processes 
+acting independently along its branches.
+\par
+The $N$-tipped bifurcating phylogenetic tree $\tau$ is a graph with a set of vertices
+$V = (V_1,\dots,V_{2N-1})$ and edge weights $T=(t_1,\dots,t_{2N-2})$.  The vertices correspond to nodes of the tree and, as the 
+length of the tree $\tau$ is measured 
+in units of time, $T$ consists of times corresponding to branch lengths.
+Each external node $V_i$ for $i = 1, \dots , N$ is of degree 1, with one
+parent node $V_{pa(i)}$ from within the internal or root nodes.  Each internal node $V_i$ for $i = N+1, \dots , 2N-2$ 
+is of degree 3 and the root node $V_{2N-1}$ is of degree 2.  An edge with weight $t_i$ connects $V_i$ to
+$V_{pa(i)}$.  In addition to the observed traits $\textbf{Y}_1,\dots,\textbf{Y}_N$ at the external nodes, there are
+unobserved traits $\textbf{Y}_{N+1},\dots,\textbf{Y}_{2N-1}$ and the external nodes and root.
+\par
+Brownian diffusion (also known as a Wiener process), is a continuous-time stochastic process originally developed to 
+model the random motion of a physical particle \citep{Brown1828, Wiener1958}.  Formally, a standard multivariate Brownian diffusion process 
+$\textbf{W}(t)$ is characterized by the following properties: $\textbf{W}(0) = \textbf{0}$, the map $t \mapsto \textbf{W}(t)$ is almost surely continous, 
+$\textbf{W}(t)$ has
+independent increments and, for $0 \leq s \leq t$, $\textbf{W}(t) - \textbf{W}(s)$ has a multivariate normal distribution with mean $\textbf{0}$ and variance
+matrix $(t-s) \textbf{I}$.   
+\par
+Phylogenetic comparative methods aim to model correlated evolution 
+between traits and typically employ a correlated multivariate Brownian diffusion with variance $(t-s)\textbf{P}^{-1}$.  Here, $\textbf{P}$ is a $d \times d$
+infinitesimal precision matrix.  The mean of $\textbf{0}$ posits a neutral drift so that the traits do not evolve according to any systematic directional
+trend.  $\textbf{P}$ determines the intensity and correlation of the neutral genetic drift.
+\par
+The Brownian diffusion process produces the observed traits by starting at the root node and proceeding down the branches of $\tau$.  The
+displacement $\textbf{Y}_i - \textbf{Y}_{pa(i)}$ along a branch is multivariate normally distributed, centered at $\textbf{0}$ with variance $t_i \textbf{P}^{-1}$.  Therefore,
+conditioning on the trait value $\textbf{Y}_{pa(i)}$ at the parent node, we have
+\begin{equation}
+\textbf{Y}_{i} | \textbf{Y}_{pa(i)} \sim N \left(\textbf{Y}_{pa(i)}, t_i \textbf{P}^{-1} \right) .
+\end{equation}
+
+
+\subsection{Directional Selection}
+
+To model selection toward a particular direction, we adopt a multivariate correlated Brownian diffusion process with a non-neutral drift.  
+In our drift diffusion process we replace the zero mean of the increment $\textbf{W}(t) - \textbf{W}(s)$ with the time-scaled mean
+vector $(t-s)\boldsymbol \mu$.  Notably, the correlation structure of the correlated Brownian diffusion process is unaltered by the incorporation of a
+non-neutral drift.
+The expected difference between the trait values of a descendant and its ancestor is determined 
+by the overall optimal directional vector $\boldsymbol \mu$ and the time elapsed between descendant and ancestor.  
+The expected trait value and the variance both increase in proportion to time.
+\par
+We have
+\begin{equation}
+\textbf{Y}_i | \textbf{Y}_{pa(i)} \sim N \left( \textbf{Y}_{pa(i)} + t_i \boldsymbol \mu, t_i \textbf{P}^{-1} \right)
+\end{equation}
+for $i = 1, \dots, 2N-2$.  We place a conjugate prior 
+\begin{equation}
+\textbf{Y}_{2N-1} \sim N \left(\boldsymbol \mu^*, \phi \textbf{P}^{-1} \right)
+\end{equation}
+on the root that is relatively uninformative for small values of $\phi$.  (Decide where/how to say we assign a relatively uninformative multivariate 
+normal prior to $\boldsymbol \mu$.)  The joint distribution of all traits is straightforwardly expressed as the product
+\begin{equation}
+P(\textbf{Y}_1,\dots,\textbf{Y}_{2N-1} | \tau, \textbf{P}, \boldsymbol \mu, \boldsymbol \mu^*, \phi) = \left( \prod_{i=1}^{2N-2} P(\textbf{Y}_i|\textbf{Y}_{pa(i)},\tau, \textbf{P},\boldsymbol \mu) \right) P(\textbf{Y}_{2N-1} | \textbf{P},\boldsymbol \mu^*, \phi)
+\end{equation}
+Later, we present a dynamic programming algorithm to compute the density of the observed traits by integrating over all possible realizations of the
+unobserved traits.
+
+
+\subsection{Selection Toward an Optimal Trait Value}
+
+A natural choice for stochastic modeling of selection toward an optimal value is the Ornstein-Uhlenbeck process.
+Let $\textbf{W}_t$ denote a $d$-dimensional standard Brownian diffusion.  A diffusion process $\textbf{Y}_t$ is called an
+Ornstein-Uhlenbeck (OU) process if, for some constant $d \times d$ matrices $\textbf{A}$ and $\boldsymbol \Sigma$, with $\boldsymbol \Sigma$
+positive-definite, and a $d$-dimensional vector $\boldsymbol \theta$, we have
+\begin{equation}
+d \textbf{Y}_t = \textbf{A} (\boldsymbol \theta - \textbf{Y}_t) dt + \boldsymbol \Sigma d \textbf{W}_t.
+\end{equation}
+Thus an OU process has two components: one deterministic and the other stochastic.  The deterministic component
+$\textbf{A} (\boldsymbol \theta - \textbf{Y}_t) dt$ describes the pull of the trait value toward an optimal trait $\boldsymbol \theta$.  The matrix $\textbf{A}$ determines
+the strength of the selective force.  In our development, we take $\textbf{A}$ to be a diagonal matrix with all diagonal terms equal to a positive scalar  
+$\alpha$.  The implication of this choice is that the process exerts the same selective force on each component of the trait, and the components
+of the trait are pulled toward their respective optimal values independently of each other.
+The term $\boldsymbol \Sigma d \textbf{W}_t$ represents the stochastic force of neutral drift, with $\boldsymbol \Sigma$ measuring the intensity and correlation 
+of the drift.  Notably, Brownian diffusion is a special case of an OU process.  Indeed, if $\textbf{A}$ is the zero matrix (meaning there
+is no selective force acting on the trait value), equation (5) reduces to correlated Brownian diffusion:
+\begin{equation}
+d \textbf{Y}_t = \boldsymbol \Sigma d \textbf{W}_t.
+\end{equation}
+\par
+To solve the stochastic differential equation (5), we apply Ito's Lemma to the function
+\begin{equation*}
+f(\textbf{Y}_t,t) = e^{\textbf{A} t} ( \textbf{Y}_t - \boldsymbol \theta)
+\end{equation*}
+to get
+\begin{equation*}
+d e^{\textbf{A}t} ( \textbf{Y}_t - \boldsymbol \theta) = e^{\textbf{A}t} \boldsymbol \Sigma d \textbf{W}_t .
+\end{equation*}
+Integrating both sides, we have
+\begin{equation*}
+ e^{\textbf{A} t} ( \textbf{Y}_t - \boldsymbol \theta) - (\textbf{Y}_0 - \boldsymbol \theta) = \int_{0}^{t}  e^{\textbf{A} u} \boldsymbol \Sigma d \textbf{W}_u .
+\end{equation*}
+so that
+\begin{eqnarray*}
+  \textbf{Y}_t & = & \boldsymbol \theta + e^{-\textbf{A}t} (\textbf{Y}_0 - \boldsymbol \theta) + \int_{0}^{t}  e^{\textbf{A} (u-t)} \boldsymbol \Sigma d \textbf{W}_u \\
+  & = & ( \textbf{I} - e^{-\textbf{A}t} ) \boldsymbol \theta + e^{-\textbf{A}t}\textbf{Y}_0 + \int_{0}^{t}  e^{\textbf{A}(u-t)} \boldsymbol \Sigma d \textbf{W}_u .
+\end{eqnarray*}
+Because the integrand of the Ito integral $\int_{0}^{t}  e^{\textbf{A}(u-t)}\boldsymbol \Sigma d \textbf{X}_u$ is non-random, it follows that
+\begin{equation*}
+\int_{0}^{t}  e^{\textbf{A}(u-t)} \boldsymbol \Sigma d \textbf{X}_u \sim N \left( \textbf{0}, \int_{0}^{t}  e^{\textbf{A}(u-t)}\boldsymbol \Sigma \boldsymbol \Sigma^T e^{\textbf{A}^T (u-t)} du    \right) .
+\end{equation*}
+Also, $\textbf{A} = \alpha \textbf{I}$ so that $e^{\textbf{A}(u-t)} = e^{\alpha(u-t)}\textbf{I}$, and the variance simplifies to
+\begin{eqnarray*}
+\int_{0}^{t}  e^{\textbf{A}(u-t)}\boldsymbol \Sigma \boldsymbol \Sigma^T e^{\textbf{A}^T (u-t)} du & = & \int_{0}^{t}  e^{\alpha (u-t)}\boldsymbol \Sigma^2 e^{\alpha (u-t)} du \\
+& = &   \boldsymbol \Sigma^2 \int_{0}^{t} e^{2\alpha(u-t)} du \\
+ & = & \boldsymbol \Sigma^2 \left[ \frac{e^{2\alpha(u-t)}}{2\alpha}     \right]_0^t \\
+ & = &  \frac{1 - e^{-2\alpha t}}{2 \alpha} \boldsymbol \Sigma^2 .
+\end{eqnarray*} 
+We rewrite the variance in terms of the process's infinitesimal precsion matrix $\textbf{P} = (\boldsymbol \Sigma^2)^{-1} $ and conclude that
+\begin{equation*}
+\textbf{Y}_t | \textbf{Y}_0 \sim N \left(( 1 - e^{- \alpha t} ) \boldsymbol \theta + e^{- \alpha t}\textbf{Y}_0, \frac{1 - e^{-2\alpha t}}{2 \alpha} \textbf{P}^{-1} \right) .
+\end{equation*}
+A trait that has evolved for time $t$ has an expected value equal to a weighted average of the initial trait value
+and the optimal trait value.  As the time $t$ increases, the expectation of $\textbf{Y}_t$ is dominated by $\boldsymbol \theta$  
+and, in contrast to Brownian diffusion, the variance stabilizes:
+\begin{equation*}
+\lim_{t \to +\infty} \textbf{Y}_t | \textbf{Y}_0 \sim N \left(\boldsymbol \theta , \frac{1}{2 \alpha} \textbf{P}^{-1} \right) .
+\end{equation*}
+\par
+The OU process starts at the root and proceeds down the branches of $\tau$, producing traits at the nodes via the conditional
+distribution
+\begin{equation}
+\textbf{Y}_i | \textbf{Y}_{pa(i)} \sim N \left(( 1 - e^{- \alpha t_i} ) \boldsymbol \theta + e^{- \alpha t_i} \textbf{Y}_{pa(i)}, \frac{1-e^{-2 \alpha t_i}}{2 \alpha} \textbf{P}^{-1} \right) 
+\end{equation}
+for $i = 1, \dots, 2N-2$.  As with Brownian diffusion, we place a relatively uninformative conjugate prior on the root trait: 
+\begin{equation}
+\textbf{Y}_{2N-1} \sim N \left(\boldsymbol \mu^*, \phi \textbf{P}^{-1} \right).
+\end{equation}
+The joint distribution of all traits is 
+\begin{equation}
+P(\textbf{Y}_1,\dots,\textbf{Y}_{2N-1} | \tau, \textbf{P}, \alpha, \boldsymbol \theta, \boldsymbol \mu^*, \phi) = \left( \prod_{i=1}^{2N-2} P(\textbf{Y}_i|\textbf{Y}_{pa(i)},\tau, \textbf{P},\alpha, \boldsymbol \theta) \right) P(\textbf{Y}_{2N-1} | \textbf{P},\boldsymbol \mu^*, \phi) .
+\end{equation}
+
+
+\subsection{Multivariate Trait Peeling}
+
+The density of the observed traits can be obtained by integrating over all possible realizations of the observed traits 
+at the root and internal nodes.  An analytic solution is instrumental in constructing an effecient Markov chain Monte Carlo algorithm.
+We adopt a dynamic programming approach which is
+analogous to Felsenstein's pruning method \citep{Felsenstein81} and has been employed for drift-neutral
+Brownian diffusion likelihoods \citep{Lemey2010} .  Here, we present the details for the case of an OU process.  The algorithm is similar 
+for Brownian diffusion with a nontrivial drift. 
+\par
+We wish to compute the density
+\begin{eqnarray}
+P(\textbf{Y}_1,\dots,\textbf{Y}_{N} ) & = & \int  \dots \int P(\textbf{Y}_1,\dots,\textbf{Y}_{2N-1}) d \textbf{Y}_{N+1} \dots d\textbf{Y}_{2N-1} \\
+& = & \int \dots \int \left( \prod_{i=1}^{2N-2} P(\textbf{Y}_i | \textbf{Y}_{pa(i)} ) \right) P(\textbf{Y}_{2N-1} ) d \textbf{Y}_{N+1} \dots d\textbf{Y}_{2N-1} .
+\end{eqnarray}
+We have omitted the parameters $\tau$, $\textbf{P}$, $\alpha$, $\boldsymbol \theta$, $\boldsymbol \mu*$ and $\phi$ from the notation for the sake
+of clarity.  The integration proceeds in a postorder traversal integrating out one internal node trait at a time.  Let $\{\textbf{Y}_i \}$ denote the set 
+of observed trait values descendant from and including the node $V_i$, and suppose $pa(i) = pa(j) = k$.  Our traversal requires computing integrals
+of the form
+\begin{equation}
+P( \{\textbf{Y}_k \} | \textbf{Y}_{pa(k)} ) = \int P(\{\textbf{Y}_i \} | \textbf{Y}_k) P(\{\textbf{Y}_j \} | \textbf{Y}_k) P(\textbf{Y}_k | \textbf{Y}_{pa(k)}) d \textbf{Y}_k .
+\end{equation}
+Because the integrand is proportional to a multivariate normal density, it suffices to keep track of partial mean vectors $\textbf{m}_k$, partial precision scalars $p_k$ 
+and remainder terms $\rho_k$.
+\par
+Let MVN(.;$\boldsymbol \kappa$,$\boldsymbol \Lambda$) denote a multivariate normal probability density function with mean $\boldsymbol \kappa$ and 
+precision $\boldsymbol \Lambda$.  We can rewrite conditional densities to facilitate integration with respect to the trait at the parent node:
+\begin{eqnarray}
+P(\textbf{Y}_i | \textbf{Y}_k) & = & \mbox{MVN} \left(\textbf{Y}_i;( 1 - e^{- \alpha t_i} ) \boldsymbol \theta + e^{- \alpha t_i} \textbf{Y}_{k},
+\frac{2 \alpha}{1-e^{-2 \alpha t_i}} \textbf{P} \right) \\
+& = & (e^{\alpha t_i})^d \times \mbox{MVN}\left(e^{\alpha t_i} \textbf{Y}_i - (e^{\alpha t_2} -1) \boldsymbol \theta;\textbf{Y}_k, \frac{2 \alpha e^{-2 \alpha t_i} }{1-e^{-2 \alpha t_i}} \textbf{P}  \right).
+\end{eqnarray}
+Thus for $k = 1, \dots , N$, set $\rho_k = (e^{\alpha t_k})^d$,
+\begin{equation}
+\textbf{m}_k = e^{\alpha t_k} \textbf{Y}_k - (e^{\alpha t_k} - 1) \boldsymbol \theta 
+\end{equation}
+and 
+\begin{equation}
+p_k = \frac{2 \alpha e^{-2 \alpha t_i}}{1-e^{-2 \alpha t_i}} .  
+\end{equation}
+Then
+\begin{eqnarray}
+P(\{\textbf{Y}_i \} | \textbf{Y}_k) P(\{\textbf{Y}_j \} | \textbf{Y}_k) & = & \rho_i \times \mbox{MVN} (\textbf{m}_i;\textbf{Y}_k,p_i \textbf{P}) \\
+& & \times  \rho_j \times \mbox{MVN}(\textbf{m}_j;\textbf{Y}_k,p_j \textbf{P}) \\
+& = & \rho^*_k \times \mbox{MVN}(\textbf{Y}_k; \textbf{m}^*_k, (p_i + p_j) \textbf{P})
+\end{eqnarray}
+where 
+\begin{equation}
+\textbf{m}^*_k = \frac{p_i \textbf{m}_i + p_j \textbf{m}_j}{p_i + p_j} ,
+\end{equation}
+and
+\begin{equation}
+\rho^*_k =  \rho_i \rho_j \left( \frac{p_i p_j}{2 \pi (p_i + p_j)} \right)^{d/2}  |\textbf{P}|^{1/2} \frac {\exp \left[ -\frac{p_i}{2} \textbf{m}_i' \textbf{P} \textbf{m}_i -\frac{p_j}{2}\textbf{m}_j' \textbf{P} \textbf{m}_j  \right] }
+{ \exp \left[ -\frac{p_i + p_j}{2} \textbf{m}^{*'}_{k} \textbf{P} \textbf{m}^*_k \right] } .
+\end{equation}
+Multiplying by $P(\textbf{Y}_k | \textbf{Y}_{pa(k)})$ and integrating with respect to $\textbf{Y}_k$, we get (decide whether to include one more step of detail below)
+\begin{eqnarray}
+P( \{\textbf{Y}_k \} | \textbf{Y}_{pa(k)} ) & = & \int P(\{\textbf{Y}_i \} | \textbf{Y}_k) P(\{\textbf{Y}_j \} | \textbf{Y}_k) P(\textbf{Y}_k | \textbf{Y}_{pa(k)}) d \textbf{Y}_k \\
+& = &  \rho^*_k ( e^{\alpha t_k} )^d \times \mbox{MVN}(\textbf{Y}_{pa(k)}; \textbf{m}_k, p_k \textbf{P}) \\
+& = & \rho_k \times \mbox{MVN}(\textbf{Y}_{pa(k)}; \textbf{m}_k, p_k \textbf{P}),
+\end{eqnarray}
+where $\rho_k = \rho^*_k ( e^{\alpha t_k} )^d $,
+\begin{equation}
+\textbf{m}_k = e^{\alpha t_k} ( \textbf{m}^*_k - (1 - e^{- \alpha t_k}) \boldsymbol \theta ), 
+\end{equation}
+and 
+\begin{equation}
+p_k = \frac{e^{-2 \alpha t_k}}{  \frac{1-e^{-2 \alpha t_k}}{2 \alpha}  + \frac{1}{p_i + p_j} } .
+\end{equation}
+\par
+Integrating out all internal node traits yields 
+\begin{equation*}
+P(\textbf{Y}_1,\dots,\textbf{Y}_N | \textbf{Y}_{2N-1}) = \rho^*_{2N-1} \times \mbox{MVN} (\textbf{Y}_{2N-1};\textbf{m}^*_{2N-1},
+(p_{2N-2}+p_{2N-3})\textbf{P}) .  
+\end{equation*}
+For the 
+final step, we multiply by the conjugate root prior and integrate:
+\begin{eqnarray}
+P(\textbf{Y}_1,\dots,\textbf{Y}_N) & = & \int P(\textbf{Y}_1,\dots,\textbf{Y}_N | \textbf{Y}_{2N-1}) P(\textbf{Y}_{2N-1}) d \textbf{Y}_{2N-1} \\
+& = &  \rho^*_{2N-1}  \mbox{MVN} (\textbf{m}^*_{2N-1};\boldsymbol \mu^*, p_{2N-1} \textbf{P}),
+\end{eqnarray}
+where
+\begin{equation}
+p_{2N-1} = \frac{(p_{2N-2}+p_{2N-3})\phi}{p_{2N-2}+p_{2N-3} +\phi}.
+\end{equation}
+(Specify a few details for drift case.)  
+
+
+
+\subsection{Joint Modeling and Inference}
+
+A major strength of our Bayesian framework is that it jointly models sequence and trait evolution. 
+Adopting a standard phylogenetic approach, we 
+assume the sequence data $\textbf{X}$ arise from a continuous-time Markov chain (CTMC) model for character evolution 
+acting along the unobserved phylogenetic tree $\tau$.  The CTMC is characterized by a vector $\textbf{Q}$ of mutation parameters that
+may include, for instance, relative exchange rates among characters, an overall rate multiplier and across-site variation 
+specifications.  
+The traits $\textbf{Y}$ arise from a diffusion process acting on $\tau$, governed by parameters $\boldsymbol \Lambda$.  A crucial
+assumption is that the processes giving rise to the observed sequences and traits are independent given the phylogeny
+$\tau$: 
+\begin{equation}
+P(\textbf{X},\textbf{Y}|\tau,\textbf{Q},\boldsymbol \Lambda) = P(\textbf{X}|\tau, \textbf{Q})P(\textbf{Y}|\tau, \boldsymbol \Lambda),
+\end{equation}
+enabling us to write the joint model posterior distribution as
+\begin{eqnarray}
+P(\tau, \textbf{Q}, \boldsymbol \Lambda | \textbf{X},\textbf{Y}) \propto P(\textbf{X}|\tau,\textbf{Q}) P(\textbf{Y}|\tau,\boldsymbol \Lambda) 
+P(\tau)P(\textbf{Q})P(\boldsymbol \Lambda) .
+\end{eqnarray}
+\par
+To complete specification of the trait evolution process, we assign prior distributions to the diffusion parameters.
+In the absence of strong prior knowledge of the nature of the diffusion process, we make relatively uninformative 
+$\it{a}$ $\it{priori}$ assumptions.
+For Brownian diffusion with non-neutral drift, we give the directional drift vector $\boldsymbol \mu$ a 
+multivariate normal prior.  In the case of an OU process, we posit a gamma distribution for the positive-valued selection 
+parameter $\alpha$, and assume a multivariate normal prior for the optimal trait $\boldsymbol \theta$.  In either case,
+we assume the precision matrix $\textbf{P}$ follows a Wishart distribution with, say, degrees of freedom $v$ and scale 
+matrix $V$.  
+Importantly, the Wishart distribution is conjugate to the observed trait likelihood.  Indeed, the posterior
+\begin{equation}
+P(\textbf{P} | \textbf{Y}_1,\dots,\textbf{Y}_N) \propto  P(\textbf{Y}_1,\dots,\textbf{Y}_N |\textbf{P}) P(\textbf{P})
+\end{equation}
+has a Wishart distribution with $N+v$ degrees of freedom and scale matrix
+\begin{equation}
+\left( V^{-1} + p_{2N-1}(\textbf{m}^*_{2N-1} - \boldsymbol \mu^*)(\textbf{m}^*_{2N-1} - \boldsymbol \mu^*)'  
++ \sum_{k=N+1}^{2N-1} [ p_i \textbf{m}_i \textbf{m}'_i + p_j \textbf{m}_j \textbf{m}'_j - (p_i + p_j)\textbf{m}^*_k \textbf{m}^{*'}_k]  \right)^{-1} . 
+\end{equation}
+This enables construction of a Gibbs sampler from the full conditional distribution of $\textbf{P}$ (Talk about 
+advantages of collapsed Gibbs sampler here).
+\par
+We implement our joint model by integrating our trait evolution framework into the BEAST software package 
+\citep{Drummond2012}.  BEAST provides effective and efficient methods for Bayesian phylogenetic inference,   
+particularly to estimate phylogenies and model molecular sequence evolution.  For the phylogeny $\tau$, we
+choose from flexible coalescent-based priors that do not make strong $\it{a}$ $\it{priori}$ assumptions
+about the population history \citep{Drummond2005, Minin2008, Gill2013}.  For sequence evolution, 
+we have access to a range of classic substitution models \citep{Kimura1980, Felsenstein81, Hasegawa1985},
+gamma distributed rate heterogeneity among sites \citep{Yang1994}, and strict and relaxed molecular 
+clock models for branch rates \citep{Drummond2006}.
+\par
+Estimation of the full joint posterior (31) is achieved through Markov chain Monte Carlo (MCMC) sampling.  
+In addition to the Gibbs sampler for the precision matrix, we employ standard Metropolis-Hastings transition
+kernels.
+
+
+\section{Simulations} 
+
+We evaluate the performance of our diffusion models on simulated data.  To generate a synthetic data set, 
+we simulate genetic sequence data and bivariate trait realizations on the tips of a phylogeny.  The phylogeny and
+sequence alignments are generated with existing tools in BEAST according to parameter estimates obtained from 
+the West Nile virus analysis.  To simulate the traits, we exploit the fact that the joint distribution of all 
+trait values at the tips of the phylogenetic tree is multivariate normal.  This joint distribution is easily obtained
+by writing each tip trait as a linear combination of independent trait contrasts.
+\par
+For our Brownian drift diffusion model, we simulate trait value realizations according to a correlated Brownian 
+diffusion process with the estimated precision matrix $\textbf{P}$ from the West Nile virus analysis and five different 
+values for the drift vector $\boldsymbol \mu$.  The difference choices for $\boldsymbol \mu$ can be seen in Table 1 and
+include the estimated West Nile virus values, a neutral (zero-valued) drift, a large difference in 
+the magnitudes of the drifts in the different coordinates, equal drift in each coordinate,
+and positive drift in one coordinate and negative in the other.  As outcomes, we monitor the estimated mean of 
+$\boldsymbol \mu$, the estimated 95$\%$ BCI, and coverage of the true value.  The results for 100 synthetic 
+data sets are summarized in Table 1.
+
+
+
+
+
+
+drift
+
+1. WNV values -0.69, -2.28
+
+
+2. 0 in both coordinates
+
+3. (2,7)
+
+4. (3,3)
+
+5. (3,-3)
+
+
+
+
+\section{West Nile Virus} 
+
+The West Nile virus (WNV) is an arbovirus spread primarily by infected mosquitos.  Birds are the most common host,
+although WNV has been known to infect other animals including humans.  About 70-80$\%$ of infected humans do not 
+develop any symptoms, and most of the remaining infections result in fever and other symptoms such as headaches,
+body aches, joint paints, vomiting, diarrhea or rash.  Fewer than 1$\%$ of infected humans will develop a serious
+neurologic illness such as encephalitis or meningitis.  Recovery from neurologic infection can take several months, 
+some neurologic effects can be permanent, and about 10$\%$ of such infections lead to death.
+Since 1999, WNV has been responsible for more than 1,500 deaths \citep{CDC2013}.
+\par
+WNV was first detected in the United States in New York City in August 1999, and is most closely 
+related to a highly pathogenic WNV lineage isolated in Israel in 1998 \citep{Lanciotti1999}.  
+Surveillance records of WNV incidence show a wave of infection that spread westward and reached the west
+coast by 2004 \citep{CDC2013}.  Thus the spread of WNV in North America can be naturally modeled as a spatial
+diffusion process with a directional trend.
+\par
+We analyze a data set of 104 WNV complete genome sequences sampled between 1999 and 2008 and isolated from a 
+number of different host and vector species \citep{Pybus2012}.  The sequences were sampled from a wide variety 
+of locations in the United States and Mexico.  We represent the sampling locations as bivariate traits consisting
+of latitude and longitude coordinates and conduct a phylogeographic analysis using our Brownian diffusion model
+with non-neutral drift.
+\par
+Of prime interest is the estimated drift vector $\boldsymbol \mu$.  For the longitude, we get an estimated mean drift of 
+-2.28 with 95$\%$ Bayesian credibility interval (BCI) of (-3.58,-0.91).  This indicates a significant westward trend in
+the spread of WNV, consistent with WNV incidence data.  For the latitude, we have an estimated mean drift of -0.69 with
+95$\%$ BCI (-1.44,0.06).  Therefore we do not infer a statistically significant North-South trend. (Interpret the magnitude 
+of the drift in terms of miles, for instance)
+
+
+
+
+\section{HIV} 
+
+HIV data set sampled in Democratic Republic of Congo and Republic of Congo.  Significant longitudinal drift
+with mean 0.314 and BCI (0.253,0.377).  Latitudinal drift has mean of -0.09 with BCI (-0.13,-0.04)
+
+
+\section{Discussion} 
+
+We introduce
+
+
+\section{Drift Notes}
+
+In the case of homogeneous drift, $\mu_1 = \dots = \mu_{2N-2}$.  We denote the common drift value by $\mu_0$ and assign it
+a diffuse normal prior.  A homogenous drift term is appropriate for modeling a process with a general trend in a certain direction
+that does not vary over time and space.  However, such an assumption is very restrictive and maybe obscure key aspects of the spatial
+history.  A more flexible approach is to allow the drift terms to vary from branch to branch.  
+\par
+Consider a $N$-tipped phylogenetic tree $\tau = (V,t)$ that is a graph with a set of vertices (nodes)
+$V$ and edge weights $t$.  Each external node $V_i \in V$ for $i = 1, \dots , N$ is of degree 1, having one
+parent node $V_{pa(i)}$ from within the internal or root nodes.  Each internal node $V_i$ for $i = N+1, \dots , 2N-2$ 
+is of degree 3 and the root node $V_{2N-1}$ is of degree 2.  An edge with weight $t_i$ connects $V_i$ to
+$V_{pa(i)}$, and $t = (t_1, \dots, t_{2N-2})$.
+\par
+Let $(Y_1,\dots,Y_{2N-2})$ denote a vector of $d$-dimensional continuous traits for the corresponding 
+nodes in $\tau$.  We observe $(Y_1,\dots,Y_N)$ at the external nodes but do not observe $(Y_{N+1},\dots,Y_{2N-1})$.
+\begin{equation}
+Y_i \sim MN \left( Y_{pa(i)} + t_i \mu_i, \frac{1}{t_i}P \right)
+\end{equation}
+for $i = 1, \dots, 2N-2$, where $P$ is an unkown $d$-dimensional precision matrix for the unscaled Brownian 
+motion and $\mu_i$ is an unknown $d$-dimensional branch-specific drift vector.  We place a conjugate prior on the root 
+\begin{equation}
+Y_{2N-1} \sim MN \left(\mu*, \phi P \right)
+\end{equation}
+that is relatively uninformative for small values of $\phi$.  
+To allow the diffusion process to vary from branch to branch in $\tau$, we rescale the variance matrix by multiplying
+by a branch-specific scaling factor $\phi_b$ that is drawn from an underlying distribution.
+We have
+\begin{equation}
+Y_i \sim MN \left( Y_{pa(i)} + t_i \mu_i, \frac{1}{t_i \phi_i}P \right)
+\end{equation}
+and
+\begin{equation}
+P(Y_1,...,Y_{2N-1} |t,\phi ) = \left(  \prod_{i=1}^{2N-2} P(Y_i | Y_{pa(i)},\phi_i,t_i) \right) P(Y_{2N-1} | \phi).
+\end{equation}
+To ease the notation, we suppress $t$ and $\phi$:
+\begin{equation}
+P(Y_1,...,Y_{2N-1}) = \left(  \prod_{i=1}^{2N-2} P(Y_i | Y_{pa(i)}) \right) P(Y_{2N-1} ).
+\end{equation}
+We can compute the density of the observed traits by integrating over all possible realizations of the
+unobserved traits,
+\begin{equation}
+P(Y_1,...,Y_N) = \int \int \dots \int P(Y_1, \dots, Y_{2N-1}) dY_{N+1} dY_{N+2} dY_{2N-1}.
+\end{equation}
+To achieve an analytic solution, we follow a dynamic-programming approach.  First, we illustrate the approach on a
+5-node, 3-tipped tree in which $V_1$ and $V_2$ connect to $V_4$ and $V_4$ and $V_3$ connect to the root $V_5$.  
+To compute
+\begin{equation}
+P(Y_1,Y_2,Y_3) = \int \int P(Y_1 | Y_4) P(Y_2 | Y_4)  P(Y_3 | Y_5) P(Y_4 | Y_5) P(Y_5) dY_4 dY_5 ,
+\end{equation}
+we start by computing
+\begin{equation}
+P(Y_1,Y_2,Y_4 | Y_5) = \int  P(Y_1 | Y_4) P(Y_2 | Y_4) P(Y_4 | Y_5) dY_4.
+\end{equation}
+We have
+\begin{eqnarray}
+P(Y_1 | Y_4) P(Y_2 | Y_4 ) & = & \left( \frac{1}{t_1 \phi_1 2 \pi} \right) ^{d/2} |P|^{1/2}  \left( \frac{1}{t_2 \phi_2 2 \pi} \right) ^{d/2} |P|^{1/2} \\
+& & * \exp \left[ -\frac{1}{2t_1 \phi_1} \left( Y_1 - t_1 \mu_1 - Y_4  \right)' P \left( Y_1 - t_1 \mu_1 - Y_4  \right)   \right] \\
+& & * \exp \left[ -\frac{1}{2t_2 \phi_2} \left(Y_2 - t_2 \mu_2 - Y_4 \right)' P \left( Y_2 - t_2 \mu_2 - Y_4  \right)   \right]
+\end{eqnarray}
+Letting $p_i = \frac{1}{t_i \phi_i}$ and $m_i = Y_i - t_i \mu_i$, we can write
+\begin{eqnarray}
+P(Y_1 | Y_4) P(Y_2 | Y_4 ) & = & \left( \frac{p_1}{2 \pi} \right) ^{d/2}  \left( \frac{p_2}{2 \pi} \right) ^{d/2} |P|^{1/2} |P|^{1/2}  \\
+& & * \exp \left[ -\frac{p_1}{2} \left( m_1  - Y_4  \right)' P \left( m_1 - Y_4  \right)  \right] \\
+ & & * \exp \left[ -\frac{p_2}{2} \left(m_2 - Y_4 \right)' P \left( m_2 - Y_4  \right)   \right]
+\end{eqnarray}
+so that $P(Y_1 | Y_4) P(Y_2 | Y_4 )$ is equal to
+\begin{eqnarray}
+& & \left( \frac{p_1 + p_2}{2 \pi} \right) ^{d/2} |P|^{1/2} \\
+& & * \exp \left[ -\frac{p_1 + p_2}{2} \left( Y_4  - \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2} \right)' P  \left( Y_4  - \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2} \right) \right] \\
+& & * \left( \frac{p_1 p_2}{2 \pi (p_1 + p_2)} \right)^{d/2}  |P|^{1/2} \exp \left[ -\frac{p_1}{2} m_1' P m_1 -\frac{p_2}{2}m_2'P m_2  \right] \\
+& & * \exp \left[ \frac{p_1 + p_2}{2} \left(  \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2} \right)' P    
+\left(  \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2} \right)  \right] .
+\end{eqnarray}
+Therefore if we let
+\begin{equation}
+\underline{m}_4 = \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2},
+\end{equation}
+and if we introduce the remainder term
+\begin{equation}
+\rho_4 =  \left( \frac{p_1 p_2}{2 \pi (p_1 + p_2)} \right)^{d/2}  |P|^{1/2} \frac {\exp \left[ -\frac{p_1}{2} m_1' P m_1 -\frac{p_2}{2}m_2'P m_2  \right] }
+{ \exp \left[ -\frac{p_1 + p_2}{2} \underline{m}_4' P \underline{m}_4 \right] } ,
+\end{equation}
+we have
+\begin{equation}
+P(Y_1 | Y_4) P(Y_2 | Y_4 ) = \rho_4 \times MVN(Y_4 ; \underline{m_4} , (p_1 + p_2)P).
+\end{equation}
+Here, $MVN(., \kappa, \Sigma)$ denotes a normalized multivariate normal density with mean $\kappa$ and
+precision $\Sigma$.
+Next, the product $P(Y_1 | Y_4) P(Y_2 | Y_4 ) P(Y_4 | Y_5)$ is equal to
+\begin{eqnarray}
+& & \rho_4 \times MVN (Y_4 ; \underline{m}_4 , (p_1 + p_2)P) \times MVN \left( Y_4; Y_5 + t_4 \mu_4 , \frac{1}{t_4} P \right) \\
+& = & \rho_4 \times MVN \left( Y_5 ; \underline{m}_4 - t_4 \mu_4 , \frac{1}{t_4 + \frac{1}{p_1 + p_2} } P  \right)  \\
+& & \times MVN \left(Y_4 ; \frac{ \frac{1}{2t_4}}{\frac{p_1+p_2 + 1/t_4}{2}}(Y_5 + t_4 \mu_4) + 
+\frac{  \frac{p_1 +p_2}{2}}{\frac{p_1+p_2 + 1/t_4}{2}} \underline{m}_4, (p_1 + p_2 + \frac{1}{t_4})P \right) .
+\end{eqnarray}
+Introducing the notation $m_4 = \underline{m}_4 - t_4 \mu_4$ and $p_4 = \frac{1}{t_4 + \frac{1}{p_1 + p_2} }$, it follows that
+$P(Y_1,Y_2,Y_4 | Y_5)$ is equal to
+\begin{eqnarray}
+& & \int  P(Y_1 | Y_4) P(Y_2 | Y_4) P(Y_4 | Y_5) dY_4 \\
+& = & \rho_4 \times MVN \left( Y_5 ; m_4, p_4 P  \right)  \\
+& & \times \int MVN \left(Y_4 ; \frac{ \frac{1}{2t_4} (Y_5 + t_4 \mu_4) }{\frac{p_1+p_2 + 1/t_4}{2}} + 
+\frac{  \frac{p_1 +p_2}{2} \underline{m}_4 }{\frac{p_1+p_2 + 1/t_4}{2}} , \left(p_1 + p_2 + \frac{1}{t_4} \right)P \right) dY_4 \\
+& = & \rho_4 \times MVN \left( Y_5 ; m_4, p_4 P  \right) .
+\end{eqnarray}
+To recap, so far we have
+\begin{eqnarray}
+P(Y_1,Y_2,Y_3) & = & \int \int P(Y_1 | Y_4) P(Y_2 | Y_4)  P(Y_3 | Y_5) P(Y_4 | Y_5) P(Y_5) dY_4 dY_5 \\
+& = & \int \left[ \int P(Y_1 | Y_4) P(Y_2 | Y_4)  P(Y_4 | Y_5) dY_4 \right] P(Y_3 | Y_5) P(Y_5) dY_5 \\
+& = & \int P(Y_1,Y_2,Y_4 | Y_5) P(Y_3 | Y_5) P(Y_5) dY_5.
+\end{eqnarray}
+For the next step, we multiply $P(Y_1,Y_2,Y_4 | Y_5) P(Y_3 | Y_5)$ to obtain
+\begin{eqnarray}
+& & \rho_4 \times MVN ( Y_5 ; m_4, p_4 P ) \times MVN \left(Y_3; t_3 \mu_3 + Y_5, \frac{1}{t_3}P \right) \\
+& = & \rho_4 \left( \frac{p_4}{2 \pi} \right) ^{d/2}  \left( \frac{ \frac{1}{t_3} }{2 \pi} \right) ^{d/2} |P|^{1/2} |P|^{1/2}  \\
+& & * \exp \left[ -\frac{p_4}{2} \left( Y_5  - m_4  \right)' P \left( Y_5 - m_4  \right)  \right] \\
+ & & * \exp \left[ -\frac{ \frac{1}{t_3} }{2} \left(Y_3 - t_3 \mu_3 - Y_5 \right)' P \left( Y_3 - t_3 \mu_3 - Y_5  \right)   \right] .
+\end{eqnarray}
+If we let $m_3 = Y_3 - t_3 \mu_3$ and $p_3 = \frac{1}{t_3}$ then we have 
+\begin{eqnarray}
+P(Y_1,Y_2,Y_4 | Y_5) P(Y_3 | Y_5) & = & \rho_4 \left( \frac{p_4}{2 \pi} \right) ^{d/2}  \left( \frac{ p_3 }{2 \pi} \right) ^{d/2} |P|^{1/2} |P|^{1/2}  \\
+& & * \exp \left[ -\frac{p_4}{2} \left( m_4  - Y_5  \right)' P \left( m_4 - Y_5  \right)  \right] \\
+ & & * \exp \left[ -\frac{ p_3 }{2} \left(m_3 - Y_5 \right)' P \left( m_3 - Y_5  \right)   \right] ,
+\end{eqnarray}
+which essentially reduces the computation to the same computation perfomed in (11).  Therefore, setting 
+$\underline{m}_5 = \frac{p_3 m_3 + p_4 m_4}{p_3 + p_4} $ and 
+\begin{equation}
+\rho_5 =  \left( \frac{p_3 p_4}{2 \pi (p_3 + p_4)} \right)^{d/2}  |P|^{1/2} \frac {\exp \left[ -\frac{p_3}{2} m_3' P m_3 -\frac{p_4}{2}m_4'P m_4  \right] }
+{ \exp \left[ -\frac{p_3 + p_4}{2} \underline{m}_5' P \underline{m}_5 \right] } ,
+\end{equation}
+we obtain
+\begin{equation}
+P(Y_1,Y_2,Y_4 | Y_5) P(Y_3 | Y_5) = \rho_4 \times \rho_5 \times MVN (Y_5 ; \underline{m}_5, (p_3 + p_4)P) .
+\end{equation}
+Next, 
+\begin{eqnarray}
+P(Y_1,Y_2,Y_4 | Y_5) P(Y_3 | Y_5) P(Y_5) & = & \rho_4 \times \rho_5 \times MVN (Y_5 ; \underline{m}_5, (p_3 + p_4)P) \\
+& & \times MVN(Y_5; \mu*, \phi P),
+\end{eqnarray}
+which is equal to
+\begin{eqnarray}
+& & \rho_4 \times \rho_5 \times MVN (Y_5 ; \underline{m}_5, (p_3 + p_4)P) \times MVN(Y_5; \mu*, \phi P) \\
+& = & \rho_4 \rho_5 \left( \frac{p_3 + p_4}{2 \pi} \right) ^{d/2}  \left( \frac{ \phi }{2 \pi} \right) ^{d/2} |P|^{1/2} |P|^{1/2} \\
+& & \times \exp \left[ -\frac{ p_3 + p_4 }{2} \left( Y_5  - \underline{m}_5  \right)' P \left( Y_5 - \underline{m}_5  \right)  \right] \\
+& &  \times \exp \left[ -\frac{\phi}{2} \left( Y_5  - \mu*  \right)' P \left( Y_5 - \mu*  \right)  \right]  \\
+& = & \rho_4 \times \rho_5 \times MVN \left(Y_5; \frac{\phi \mu* + (p_4 + p_3) \underline{m}_5 }{\phi + p_4 + p_3}, \phi + p_4 + p_3 \right) \\
+& & \times MVN \left(\underline{m}_5;\mu*, \frac{(p_4 + p_3)\phi}{p_4 + p_3 + \phi} \right) .
+\end{eqnarray}
+Therefore
+\begin{eqnarray}
+P(Y_1,Y_2,Y_3) & = & \int P(Y_1,Y_2,Y_4 | Y_5) P(Y_3 | Y_5) P(Y_5) dY_5 \\
+& = & \rho_4 \times \rho_5 \times MVN(\underline{m}_5;\mu*, \frac{(p_4 + p_3)\phi}{p_4 + p_3 + \phi}) \\
+& & \times \int MVN \left(Y_5; \frac{\phi \mu* + (p_4 + p_3) \underline{m}_5 }{\phi + p_4 + p_3}, \phi + p_4 + p_3 \right) dY_5 \\
+& = & \rho_4 \times \rho_5 \times MVN \left(\underline{m}_5;\mu*, \frac{(p_4 + p_3)\phi}{p_4 + p_3 + \phi} \right) .
+\end{eqnarray}
+\par
+We can generalize this dynamic programming approach as follows.  Let ${Y_i}$ denote the set of observed trait values descendant from and including
+$V_i$.  Then if $pa(i) = pa(j) = k$, we wish to compute
+\begin{equation}
+P( {Y_k} | Y_{pa(k)} ) = \int P({Y_i} | Y_k) P({Y_j} | Y_k) P(Y_k | Y_{pa(k)}) dY_k .
+\end{equation}
+For $i = 1, \dots , N$, set $m_i = Y_i - t_i \mu_i $ and $p_i = \frac{1}{t_i}$.  Then
+\begin{eqnarray}
+P({Y_i} | Y_k) P({Y_j} | Y_k) & = & \left( \frac{p_i}{2 \pi} \right) ^{d/2} |P|^{1/2} 
+\exp \left[ -\frac{p_i}{2}(m_i - Y_k)' P (m_i - Y_k)    \right]  \\
+& & \times  \left( \frac{p_j}{2 \pi} \right) ^{d/2} |P|^{1/2} \exp \left[ -\frac{p_j}{2}(m_j - Y_k)' P (m_j - Y_k)    \right] \\
+& = & \rho_k \times MVN(Y_k; \underline{m}_k, (p_i + p_j) P)
+\end{eqnarray}
+where 
+\begin{equation}
+\underline{m}_k = \frac{p_i m_i + p_j m_j}{p_i + p_j} ,
+\end{equation}
+and
+\begin{equation}
+\rho_k =  \left( \frac{p_i p_j}{2 \pi (p_i + p_j)} \right)^{d/2}  |P|^{1/2} \frac {\exp \left[ -\frac{p_i}{2} m_i' P m_i -\frac{p_j}{2}m_j'P m_j  \right] }
+{ \exp \left[ -\frac{p_i + p_j}{2} \underline{m}_k' P \underline{m}_k \right] } .
+\end{equation}
+Multiplying by $P(Y_k | Y_{pa(k)})$ and integrating with respect to $Y_k$, we get 
+\begin{eqnarray}
+P( {Y_k} | Y_{pa(k)} ) & = & \int P({Y_i} | Y_k) P({Y_j} | Y_k) P(Y_k | Y_{pa(k)}) dY_k \\
+& = & \rho_k \times MVN(Y_k; m_k, p_k P),
+\end{eqnarray}
+where
+\begin{equation}
+m_k = \underline{m}_k - t_k \mu_k ,
+\end{equation}
+and 
+\begin{equation}
+p_k = \frac{1}{ t_k + \frac{1}{p_i + p_j} } .
+\end{equation}
+Continuing like this in a post-order traversal yields $P(Y_1,\dots,Y_N | Y_{2N-1})$, and the density of
+the observed traits is
+\begin{eqnarray}
+P(Y_1,\dots,Y_N) & = & \int P(Y_1,\dots,Y_N | Y_{2N-1}) P(Y_{2N-1}) dY_{2N-1} \\
+& = & \left( \prod_{k=N+1}^{2N-1} \rho_k \right) MVN(\underline{m}_{2N-1};\mu*, p_{2N-1} P) .
+\end{eqnarray}
+To place a prior over the diffusion rates, we assume that the matrix $P$ follows a Wishart distribution with degrees
+of freedom $v$ and scale matrix $V$.  The Wishart distribution is conjugate to the Brownian diffusion likelihood: 
+$P(P | Y_1,\dots,Y_N) \propto  P(Y_1,\dots,Y_N |P) P(P)$ has a Wishart distribution with $N+v$ degrees of freedom and scale matrix
+\begin{equation*}
+\left( V^{-1} + p_{2N-1}(\underline{m}_{2N-1} - \mu*)(\underline{m}_{2N-1} - \mu*)'  
++ \sum_{k=N+1}^{2N-1} [ p_i m_i m'_i + p_j m_j m'_j - (p_i + p_j)\underline{m}_k \underline{m}'_k]  \right)^{-1} . 
+\end{equation*}
+\\[4ex]
+
+
+
+
+
+
+
+\section{Optimal Traits} 
+
+Let $\textbf{X}_t$ be a two-dimensional standard Brownian motion.  A diffusion process $\textbf{Y}_t$ is called an
+Ornstein-Uhlenbeck process if, for some constant two-dimensional matrices $A$ and $\Sigma$, with $\Sigma$
+positive-definite, and a vector $\theta$, we have
+\begin{equation*}
+d \textbf{Y}_t = -A (\textbf{Y}_t - \theta) dt + \Sigma d \textbf{X}_t.
+\end{equation*}
+We can solve this stochastic differential equation by applying Ito's Lemma to the function
+\begin{equation*}
+f(\textbf{Y}_t,t) = e^{At} ( \textbf{Y}_t - \theta)
+\end{equation*}
+to get
+\begin{equation*}
+d e^{At} ( \textbf{Y}_t - \theta) = e^{At}\Sigma d \textbf{X}_t .
+\end{equation*}
+Integrating both sides, we have
+\begin{equation*}
+ e^{At} ( \textbf{Y}_t - \theta) - (\textbf{Y}_0 - \theta) = \int_{0}^{t}  e^{Au}\Sigma d \textbf{X}_u .
+\end{equation*}
+so that
+\begin{eqnarray*}
+  \textbf{Y}_t & = & \theta + e^{-At} (\textbf{Y}_0 - \theta) + \int_{0}^{t}  e^{A(u-t)}\Sigma d \textbf{X}_u \\
+  & = & ( I - e^{-At} ) \theta + e^{-At}\textbf{Y}_0 + \int_{0}^{t}  e^{A(u-t)}\Sigma d \textbf{X}_u .
+\end{eqnarray*}
+Consider that case where $A$ is diagonal:
+\begin{equation*}
+A =  \left( \begin{array}{cc}
+a_1 & 0  \\
+0 & a_2  \end{array} \right)
+\end{equation*}
+and where
+\begin{equation*}
+\Sigma =  \left( \begin{array}{cc}
+\sigma_1^2 & \rho \sigma_1 \sigma_2  \\
+\rho \sigma_1 \sigma_2 & \sigma_2^2  \end{array} \right) .
+\end{equation*}
+Because the integrand of the Ito integral $\int_{0}^{t}  e^{A(u-t)}\Sigma d \textbf{X}_u$ is non-random, it follows that
+\begin{equation*}
+\int_{0}^{t}  e^{A(u-t)}\Sigma d \textbf{X}_u \sim N \left( \bf{0}, \int_{0}^{t}  e^{A(u-t)}\Sigma \Sigma^T e^{A^T (u-t)} du    \right) .
+\end{equation*}
+Exploiting the fact that 
+\begin{equation*}
+e^{A(u-t)} = \left( \begin{array}{cc}
+e^{a_1(u-t)} & 0  \\
+0 & e^{a_2(u-t)}  \end{array} \right)
+\end{equation*}
+we get
+\begin{eqnarray*}
+\int_{0}^{t}  e^{A(u-t)}\Sigma \Sigma^T e^{A^T (u-t)} du & = & \int_{0}^{t}  e^{A(u-t)}\Sigma^2 e^{A (u-t)} du \\
+& = & \int_{0}^{t}  
+e^{A(u-t)}
+\left( \begin{array}{cc}
+\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 & \rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3  \\
+\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3  & \sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 \end{array} \right)
+ e^{A(u-t)} 
+ du \\
+ & = & \int_{0}^{t}  \left( \begin{array}{cc}
+e^{a_1(u-t)} (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) & e^{a_1(u-t)} (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3)  \\
+ e^{a_2(u-t)} ( \rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3 ) & e^{a_2(u-t)} (\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) \end{array} \right)
+e^{A(u-t)}
+ du \\
+ & = & \int_{0}^{t}  \left( \begin{array}{cc}
+e^{2a_1(u-t)} (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) & e^{(a_1 + a_2)(u-t)} (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3)  \\
+e^{(a_1 + a_2)(u-t)} (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) & e^{2 a_2(u-t)} (\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) \end{array} \right)
+ du \\
+  & = & \left[ \left( \begin{array}{cc}
+\frac{ e^{2a_1(u-t)} (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_1} & \frac{ e^{(a_1 + a_2)(u-t)} (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2}  \\
+\frac{ e^{(a_1 + a_2)(u-t)} (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2} & \frac{ e^{2 a_2(u-t)} (\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_2}  \end{array} \right) \right ]_0^t \\
+ & = &  \left( \begin{array}{cc}
+\frac{(1- e^{-2a_1 t}) (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_1} & \frac{(1 - e^{-(a_1 + a_2) t}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2}  \\
+\frac{(1 - e^{ -(a_1 +a_2) t}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2} & \frac{ (1 - e^{-2 a_2 t}) (\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_2}  \end{array} \right) .
+\end{eqnarray*} 
+We conclude that
+\begin{equation*}
+\textbf{Y}_t | \textbf{Y}_0 \sim N \left(( I - e^{-At} ) \theta + e^{-At}\textbf{Y}_0,  P_i = U_i^{-1} \right) 
+\end{equation*}
+where
+\begin{eqnarray*}
+P_i & = &  \left( \begin{array}{cc}
+\frac{(1- e^{-2a_1 t}) (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_1} & \frac{(1 - e^{-(a_1 + a_2) t}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2}  \\
+\frac{(1 - e^{ -(a_1 +a_2) t}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2} & \frac{ (1 - e^{-2 a_2 t}) (\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_2}  \end{array} \right) ^{-1} \\
+& = & \left[ \frac{(1-e^{-2a_1 t})(1-e^{-2a_2 t})(\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 )(\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 )}{4a_1a_2}   
+- \frac{ (1 - e^{ -(a_1 +a_2) t})^2 (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3)^2 }{(a_1 + a_2)^2}   \right]^{-1} \\
+& & \times  \left( \begin{array}{cc}
+\frac{(1- e^{-2a_2 t}) (\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_2} & - \frac{(1 - e^{-(a_1 + a_2) t}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2}  \\
+- \frac{(1 - e^{ -(a_1 +a_2) t}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2} & \frac{ (1 - e^{-2 a_1 t}) (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_1}  \end{array} \right) \\
+& = & \frac{1}{|U_i|} \left( \begin{array}{cc}
+\frac{(1- e^{-2a_2 t}) (\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_2} & - \frac{(1 - e^{-(a_1 + a_2) t}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2}  \\
+- \frac{(1 - e^{ -(a_1 +a_2) t}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{a_1 + a_2} & \frac{ (1 - e^{-2 a_1 t}) (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a_1}  \end{array} \right)
+\end{eqnarray*}
+We can rewrite $P_i$ to make our computations easier.  First, let us define
+\begin{equation*}
+\Sigma_A = \left( \begin{array}{cc}
+\frac{ \sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2  }{2 a_2} & - \frac{\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3 }{a_1 + a_2}  \\
+- \frac{ \rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3 }{a_1 + a_2} & \frac{ \sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2  }{2 a_1}  \end{array} \right) 
+\end{equation*}
+and 
+\begin{equation*}
+A^* = \left( \begin{array}{cc}
+a_2 & 0  \\
+0 & a_1  \end{array} \right) .
+\end{equation*}
+Then we have
+\begin{equation*}
+P_i = \frac{1}{|U_i|} \left[ \Sigma_A - e^{-A^*t} \Sigma_A e^{-A^*t}  \right] .
+\end{equation*}
+
+
+Consider a $N$-tipped phylogenetic tree $\tau = (V,t)$ that is a graph with a set of vertices (nodes)
+$V$ and edge weights $t$.  Each external node $V_i \in V$ for $i = 1, \dots , N$ is of degree 1, having one
+parent node $V_{pa(i)}$ from within the internal or root nodes.  Each internal node $V_i$ for $i = N+1, \dots , 2N-2$ 
+is of degree 3 and the root node $V_{2N-1}$ is of degree 2.  An edge with weight $t_i$ connects $V_i$ to
+$V_{pa(i)}$, and $t = (t_1, \dots, t_{2N-2})$.
+\par
+We follow Hansen and Butler $\&$ King and model trait evolution as an Ornstein-Uhlenbeck (OU) process.
+Let $(Y_1,\dots,Y_{2N-2})$ denote a vector of $d$-dimensional continuous traits for the corresponding 
+nodes in $\tau$.  We observe $(Y_1,\dots,Y_N)$ at the external nodes but do not observe $(Y_{N+1},\dots,Y_{2N-1})$.
+Then
+\begin{equation}
+Y_i | Y_{pa(i)} \sim MN \left(( I - e^{-At_i} ) \theta + e^{-At_i}Y_{pa(i)},  P_i \right) 
+\end{equation}
+for $i = 1, \dots, 2N-2$.  Here, $P$ is an unkown $d$-dimensional precision matrix, 
+$\theta_i$ is a branch-specific "optimal" trait value and 
+and $\alpha_i$ is an 
+unknown branch-specific scalar that measures the strength of the selection towards the
+optimal trait value. 
+We place a conjugate prior on the root 
+\begin{equation}
+Y_{2N-1} \sim MN \left(\mu*, \phi P \right)
+\end{equation}
+that is relatively uninformative for small values of $\phi$.  We have
+\begin{equation}
+P(Y_1,...,Y_{2N-1} |t,\phi ) = \left(  \prod_{i=1}^{2N-2} P(Y_i | Y_{pa(i)},t_i) \right) P(Y_{2N-1} | \phi).
+\end{equation}
+To ease the notation, we suppress $t$ and $\phi$:
+\begin{equation}
+P(Y_1,...,Y_{2N-1}) = \left(  \prod_{i=1}^{2N-2} P(Y_i | Y_{pa(i)}) \right) P(Y_{2N-1} ).
+\end{equation}
+We can compute the density of the observed traits by integrating over all possible realizations of the
+unobserved traits,
+\begin{equation}
+P(Y_1,...,Y_N) = \int \int \dots \int P(Y_1, \dots, Y_{2N-1}) dY_{N+1} dY_{N+2} dY_{2N-1}.
+\end{equation}
+To achieve an analytic solution, we follow a dynamic-programming approach.  First, we illustrate the approach on a
+5-node, 3-tipped tree in which $V_1$ and $V_2$ connect to $V_4$ and $V_4$ and $V_3$ connect to the root $V_5$.  
+To compute
+\begin{equation}
+P(Y_1,Y_2,Y_3) = \int \int P(Y_1 | Y_4) P(Y_2 | Y_4)  P(Y_3 | Y_5) P(Y_4 | Y_5) P(Y_5) dY_4 dY_5 ,
+\end{equation}
+we start by computing
+\begin{equation}
+P(Y_1,Y_2,Y_4 | Y_5) = \int  P(Y_1 | Y_4) P(Y_2 | Y_4) P(Y_4 | Y_5) dY_4.
+\end{equation}
+We have
+\begin{eqnarray}
+P(Y_1 | Y_4) P(Y_2 | Y_4 )  =  \frac{1}{ 2 \pi}  |P_1|^{1/2}   \frac{1}{ 2 \pi} |P_2|^{1/2} \\
+ * \exp \left[ -\frac{1}{2} \left( Y_1 - (I - e^{-At_1}) \theta - e^{-At_1} Y_4 \right)' P_1 \left( Y_1 - (I - e^{-At_1}) \theta - e^{-At_1} Y_4   \right)   \right] \\
+ * \exp \left[ -\frac{1}{2} \left( Y_2 - (I - e^{-At_2}) \theta - e^{-At_2} Y_4  \right)' P_2 \left( Y_2 - (I - e^{-At_2}) \theta - e^{-At_2} Y_4   \right)   \right] \\
+ =  \frac{1}{ 2 \pi}  |P_1|^{1/2}   \frac{1}{ 2 \pi} |P_2|^{1/2} \\
+ * \exp \left[ -\frac{1}{2} \left( e^{-At_1}  [e^{At_1} Y_1 - (e^{At_1} - I) \theta - Y_4] \right)' P_1 \left(  e^{-At_1}  [e^{At_1} Y_1 - (e^{At_1} - I) \theta - Y_4]   \right)   \right] \\
+ * \exp \left[ -\frac{1}{2} \left( e^{-At_2}  [e^{At_2} Y_2 - (e^{At_2} - I) \theta - Y_4]  \right)' P_2 \left( e^{-At_2}  [e^{At_2} Y_2 - (e^{At_2} - I) \theta - Y_4]   \right)   \right] 
+\end{eqnarray}
+Letting $m_i = e^{At_i} Y_i - (e^{At_i} - I) \theta $, we can write
+\begin{eqnarray}
+P(Y_1 | Y_4) P(Y_2 | Y_4 ) & = &  \left( \frac{1}{2 \pi} \right) ^{2} |P_1|^{1/2} |P_2|^{1/2}  \\
+& & * \exp \left[ -\frac{1}{2} \left( m_1  - Y_4  \right)' e^{-At_1} P_1 e^{-At_1} \left( m_1 - Y_4  \right)  \right] \\
+ & & * \exp \left[ -\frac{1}{2} \left(m_2 - Y_4 \right)' e^{-At_2} P_2 e^{-At_2} \left( m_2 - Y_4  \right)   \right] \\
+ & = &  \left( \frac{1}{2 \pi} \right) ^{2} |P_1|^{1/2} |P_2|^{1/2}  \\
+& & * \exp \left[ -\frac{1}{2} \left( m_1  - Y_4  \right)' e^{-At_1} P_1 e^{-At_1} \left( m_1 - Y_4  \right)  \right] \\
+ & & * \exp \left[ -\frac{1}{2} \left(m_2 - Y_4 \right)' e^{-At_2} P_2 e^{-At_2} \left( m_2 - Y_4  \right)   \right] .
+\end{eqnarray}
+To simplify things, we consider the case where the entries of $A$ are equal, say $a_1 = a_2 = a$.  Then 
+$A = aI$ and $e^{-At} = e^{-at}I$. 
+Then
+\begin{equation}
+Y_i | Y_{pa(i)} \sim MN \left(( 1 - e^{-at_i} ) \theta + e^{-at_i}Y_{pa(i)},  P_i \right) 
+\end{equation}
+for $i = 1, \dots, 2N-2$.  Here, defining $P = \Sigma^{-2}$, we have
+\begin{eqnarray*}
+P_i & = &  U_i^{-1} =  \left( \begin{array}{cc}
+\frac{(1- e^{-2a t_i}) (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a} & \frac{(1 - e^{-2a t_i}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{2a}  \\
+\frac{(1 - e^{ -2a t_i}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{2a} & \frac{ (1 - e^{-2 a t_i}) (\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a}  \end{array} \right) ^{-1} \\
+& = & \left[ \frac{(1-e^{-2a t_i})^2}{4a^2} \left[ (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 )(\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 )  
+- (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3)^2 \right]   \right]^{-1} \\
+& & \times \frac{1-e^{-2at_i}}{2a}
+\left( \begin{array}{cc}
+\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2   & - \rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3  \\
+- \rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3 & \sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2   \end{array} \right) \\
+& = & \left[ (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 )(\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 )  
+- (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3)^2 \right]^{-1} \\
+& & \times \frac{2a}{1-e^{-2at_i}}
+\left( \begin{array}{cc}
+\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2   & - \rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3  \\
+- \rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3 & \sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2   \end{array} \right)  \\
+& = & \frac{2a}{1-e^{-2at_i}} \Sigma^{-2} = \frac{2a}{1-e^{-2at_i}} P .
+\end{eqnarray*}
+An easier way to have written this is:
+\begin{eqnarray*}
+P_i & = &  U_i^{-1} =  \left( \begin{array}{cc}
+\frac{(1- e^{-2a t_i}) (\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a} & \frac{(1 - e^{-2a t_i}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{2a}  \\
+\frac{(1 - e^{ -2a t_i}) (\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3) }{2a} & \frac{ (1 - e^{-2 a t_i}) (\sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2 ) }{2 a}  \end{array} \right) ^{-1} \\
+& = & \frac{2a}{1-e^{-2at_i}}  \left( \begin{array}{cc}
+\sigma_1^4 + \rho^2 \sigma_1^2 \sigma_2^2   & \rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3  \\
+\rho \sigma_1^3 \sigma_2 + \rho \sigma_1 \sigma_2^3)  & \sigma_2^4 + \rho^2 \sigma_1^2 \sigma_2^2   \end{array} \right) ^{-1} \\
+& = & \frac{2a}{1-e^{-2at_i}} \left( \Sigma^2 \right)^{-1} \\
+& = & \frac{2a}{1-e^{-2at_i}} \Sigma^{-2} \\
+& = & \frac{2a}{1-e^{-2at_i}} P
+\end{eqnarray*}
+
+We place a conjugate prior on the root 
+\begin{equation}
+Y_{2N-1} \sim MN \left(\mu*, \phi P \right)
+\end{equation}
+that is relatively uninformative for small values of $\phi$.  We have
+\begin{equation}
+P(Y_1,...,Y_{2N-1} |t,\phi ) = \left(  \prod_{i=1}^{2N-2} P(Y_i | Y_{pa(i)},t_i) \right) P(Y_{2N-1} | \phi).
+\end{equation}
+To ease the notation, we suppress $t$ and $\phi$:
+\begin{equation}
+P(Y_1,...,Y_{2N-1}) = \left(  \prod_{i=1}^{2N-2} P(Y_i | Y_{pa(i)}) \right) P(Y_{2N-1} ).
+\end{equation}
+We can compute the density of the observed traits by integrating over all possible realizations of the
+unobserved traits,
+\begin{equation}
+P(Y_1,...,Y_N) = \int \int \dots \int P(Y_1, \dots, Y_{2N-1}) dY_{N+1} dY_{N+2} dY_{2N-1}.
+\end{equation}
+To achieve an analytic solution, we follow a dynamic-programming approach.  First, we illustrate the approach on a
+5-node, 3-tipped tree in which $V_1$ and $V_2$ connect to $V_4$ and $V_4$ and $V_3$ connect to the root $V_5$.  
+To compute
+\begin{equation}
+P(Y_1,Y_2,Y_3) = \int \int P(Y_1 | Y_4) P(Y_2 | Y_4)  P(Y_3 | Y_5) P(Y_4 | Y_5) P(Y_5) dY_4 dY_5 ,
+\end{equation}
+we start by computing
+\begin{equation}
+P(Y_1,Y_2,Y_4 | Y_5) = \int  P(Y_1 | Y_4) P(Y_2 | Y_4) P(Y_4 | Y_5) dY_4.
+\end{equation}
+We have
+\begin{eqnarray}
+P(Y_1 | Y_4) P(Y_2 | Y_4 )  =  \left( \frac{2a}{ 2 \pi (1-e^{-2at_1})} \right)^{d/2}  |P|^{1/2}   \left( \frac{2a}{ 2 \pi (1-e^{-2at_2})} \right)^{d/2} |P|^{1/2} \\
+ * \exp \left[ -\frac{1}{2} \left( Y_1 - (1- e^{-at_1}) \theta - e^{-at_1} Y_4 \right)' P_1 \left( Y_1 - (1 - e^{-at_1}) \theta - e^{-at_1} Y_4   \right)   \right] \\
+ * \exp \left[ -\frac{1}{2} \left( Y_2 - (1 - e^{-at_2}) \theta - e^{-at_2} Y_4  \right)' P_2 \left( Y_2 - (1 - e^{-at_2}) \theta - e^{-at_2} Y_4   \right)   \right] \\
+ =  \left( \frac{2a}{ 2 \pi (1-e^{-2at_1})} \right)^{d/2}  |P|^{1/2}   \left( \frac{2a}{ 2 \pi (1-e^{-2at_2})} \right)^{d/2} |P|^{1/2} \\
+ * \exp \left[ -\frac{1}{2} \left( e^{-at_1}  [e^{at_1} Y_1 - (e^{at_1} - 1) \theta - Y_4] \right)' \frac{2a}{1-e^{-2at_1}} P \left(  e^{-at_1}  [e^{at_1} Y_1 - (e^{at_1} - 1) \theta - Y_4]   \right)   \right] \\
+ * \exp \left[ -\frac{1}{2} \left( e^{-at_2}  [e^{at_2} Y_2 - (e^{at_2} - 1) \theta - Y_4]  \right)' \frac{2a}{1-e^{-2at_2}} P \left( e^{-at_2}  [e^{at_2} Y_2 - (e^{at_2} - 1) \theta - Y_4]   \right)   \right] \\
+ =  (e^{at_1})^d (e^{at_2})^d  \left( \frac{2a e^{-2at_1}}{ 2 \pi (1-e^{-2at_1})} \right)^{d/2}  |P|^{1/2}   \left( \frac{2a e^{-2at_2}}{ 2 \pi (1-e^{-2at_2})} \right)^{d/2} |P|^{1/2} \\
+ * \exp \left[ -\frac{1}{2} \left(e^{at_1} Y_1 - (e^{at_1} - 1) \theta - Y_4 \right)' \frac{2a e^{-2at_1}}{1-e^{-2at_1}} P \left(  e^{at_1} Y_1 - (e^{at_1} - 1) \theta - Y_4   \right)   \right] \\
+ * \exp \left[ -\frac{1}{2} \left( e^{at_2} Y_2 - (e^{at_2} - 1) \theta - Y_4  \right)' \frac{2a e^{-2at_2}}{1-e^{-2at_2}} P \left( e^{at_2} Y_2 - (e^{at_2} - 1) \theta - Y_4   \right)   \right] 
+\end{eqnarray}
+Letting $m_i = e^{at_i} Y_i - (e^{at_i} - 1) \theta $ and $p_i = \frac{2ae^{-2at_i}}{1-e^{-2at_i}} $, we can write
+\begin{eqnarray}
+P(Y_1 | Y_4) P(Y_2 | Y_4 ) & = &  (e^{at_1})^d (e^{at_2})^d  \left( \frac{p_1}{ 2 \pi} \right)^{d/2}  |P|^{1/2}   \left( \frac{p_2}{ 2 \pi} \right)^{d/2} |P|^{1/2}  \\
+& & * \exp \left[ -\frac{p_1}{2} \left( m_1  - Y_4  \right)' P \left( m_1 - Y_4  \right)  \right] \\
+ & & * \exp \left[ -\frac{p_2}{2} \left(m_2 - Y_4 \right)' P \left( m_2 - Y_4  \right)   \right] 
+\end{eqnarray}
+so that $P(Y_1 | Y_4) P(Y_2 | Y_4 )$ is equal to
+\begin{eqnarray}
+& & (e^{at_1})^d (e^{at_2})^d  \left( \frac{p_1 + p_2}{2 \pi} \right) ^{d/2} |P|^{1/2} \\
+& & * \exp \left[ -\frac{p_1 + p_2}{2} \left( Y_4  - \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2} \right)' P  \left( Y_4  - \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2} \right) \right] \\
+& & * \left( \frac{p_1 p_2}{2 \pi (p_1 + p_2)} \right)^{d/2}  |P|^{1/2} \exp \left[ -\frac{p_1}{2} m_1' P m_1 -\frac{p_2}{2}m_2'P m_2  \right] \\
+& & * \exp \left[ \frac{p_1 + p_2}{2} \left(  \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2} \right)' P    
+\left(  \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2} \right)  \right] .
+\end{eqnarray}
+
+
+
+Therefore if we let
+\begin{equation}
+\underline{m}_4 = \frac{p_1 m_1 + p_2 m_2}{p_1 + p_2},
+\end{equation}
+and if we introduce the remainder term
+\begin{equation}
+\rho_4 =  (e^{at_1})^d (e^{at_2})^d  \left( \frac{p_1 p_2}{2 \pi (p_1 + p_2)} \right)^{d/2}  |P|^{1/2} \frac {\exp \left[ -\frac{p_1}{2} m_1' P m_1 -\frac{p_2}{2}m_2'P m_2  \right] }
+{ \exp \left[ -\frac{p_1 + p_2}{2} \underline{m}_4' P \underline{m}_4 \right] } ,
+\end{equation}
+we have
+\begin{equation}
+P(Y_1 | Y_4) P(Y_2 | Y_4 ) = \rho_4 \times MVN(Y_4 ; \underline{m_4} , (p_1 + p_2)P).
+\end{equation}
+Here, $MVN(., \kappa, \Sigma)$ denotes a normalized multivariate normal density with mean $\kappa$ and
+precision $\Sigma$.
+Next, the product $P(Y_1 | Y_4) P(Y_2 | Y_4 ) P(Y_4 | Y_5) = P(Y_1, Y_2, Y_4 | Y_5)$ is equal to
+\begin{eqnarray}
+\rho_4 \times MVN (Y_4 ; \underline{m}_4 , (p_1 + p_2)P) 
+\times MVN \left( Y_4; (1 - e^{-at_4}) \theta + e^{-at_4} Y_5  , \frac{2a}{1-e^{-2at_4}} P \right) \\
+ =  \rho_4 \times MVN \left( e^{-at_4} Y_5 ; \underline{m}_4 - (1 - e^{-at_4}) \theta  , \frac{1}{ \frac{1}{ \frac{2a}{1-e^{-2at_4}}  } + \frac{1}{p_1 + p_2} } P  \right)  \\
+ \times  MVN \left( Y_4 ; \frac{ \frac{2a}{2(1-e^{-2at_4})} }{\frac{p_1+p_2 + \frac{2a}{1-e^{-2at_4}}  }{2}}( (1 - e^{-at_4}) \theta + e^{-at_4} Y_5 ) + 
+\frac{  \frac{p_1 +p_2}{2}}{\frac{p_1+p_2 + \frac{2a}{1-e^{-2at_4}}  }{2}} \underline{m}_4, 
+ \left( p_1 + p_2 + \frac{2a}{1-e^{-2at_4}} \right) P  \right) \\
+ =  \rho_4 \times \left( e^{at_4} \right)^d MVN \left(Y_5 ; e^{at_4} (\underline{m}_4 - (1 - e^{-at_4}) \theta )  , \frac{e^{-2at_4}}{  \frac{1}{\frac{2a}{1-e^{-2at_4}}}  + \frac{1}{p_1 + p_2} } P  \right)  \\
+\times MVN ( Y_4 ; \frac{ \frac{2a}{1-e^{-2at_4}}  }{p_1+p_2 + \frac{2a}{1-e^{-2at_4}}  }( (1 - e^{-at_4}) \theta + e^{-at_4} Y_5 ) + 
+\frac{  p_1 +p_2}{ p_1+p_2 + \frac{2a}{1-e^{-2at_4}}  } \underline{m}_4, \\
+ \left( p_1 + p_2 + \frac{2a}{1-e^{-2at_4}} \right) P ) .
+\end{eqnarray}
+Introducing the notation 
+\begin{equation}
+m_4 = e^{at_4} ( \underline{m}_4 - (1 - e^{-at_4}) \theta )  
+\end{equation}
+and 
+\begin{equation}
+p_4 = \frac{e^{-2at_4}}{  \frac{1}{\frac{2a}{1-e^{-2at_4}}}  + \frac{1}{p_1 + p_2} } , 
+\end{equation}
+it follows that
+$P(Y_1,Y_2 | Y_5)$ is equal to
+\begin{eqnarray}
+ \int  P(Y_1 | Y_4) P(Y_2 | Y_4) P(Y_4 | Y_5) dY_4 = \int P(Y_1,Y_2,Y_4 | Y_5) dY_4 \\
+ =  \rho_4 (e^{at_4} )^d  \times MVN \left( Y_5 ; m_4, p_4 P  \right)  \\
+ \times \int MVN (Y_4 ; \frac{ \frac{2a}{1-e^{-2at_4}}  }{p_1+p_2 + \frac{2a}{1-e^{-2at_4}}  }( (1 - e^{-at_4}) \theta + e^{-at_4} Y_5 ) \\
+ + \frac{  p_1 +p_2}{ p_1+p_2 + \frac{2a}{1-e^{-2at_4}}  } \underline{m}_4, 
+ \left( p_1 + p_2 + \frac{2a}{1-e^{-2at_4}} \right) P ) dY_4 \\
+ =  \rho_4 (e^{at_4} )^d \times MVN \left( Y_5 ; m_4, p_4 P  \right) .
+\end{eqnarray}
+To recap, so far we have
+\begin{eqnarray}
+P(Y_1,Y_2,Y_3) & = & \int \int P(Y_1 | Y_4) P(Y_2 | Y_4)  P(Y_3 | Y_5) P(Y_4 | Y_5) P(Y_5) dY_4 dY_5 \\
+& = & \int \left[ \int P(Y_1 | Y_4) P(Y_2 | Y_4)  P(Y_4 | Y_5) dY_4 \right] P(Y_3 | Y_5) P(Y_5) dY_5 \\
+& = & \int P(Y_1,Y_2 | Y_5) P(Y_3 | Y_5) P(Y_5) dY_5.
+\end{eqnarray}
+For the next step, we multiply $P(Y_1,Y_2 | Y_5) P(Y_3 | Y_5)$ to obtain
+\begin{eqnarray}
+\rho_4 ( e^{at_4} )^d \times MVN ( Y_5 ; m_4, p_4 P ) \\
+ \times  MVN \left( Y_3; (1 - e^{-at_3}) \theta + e^{-at_3} Y_5  , \frac{2a}{1-e^{-2at_3}} P \right)  \\
+ =  \rho_4 ( e^{at_4} )^d \left( \frac{p_4}{2 \pi} \right) ^{d/2}  \left( \frac{2a}{ 2 \pi (1-e^{-2at_3}) } \right) ^{d/2} |P|^{1/2} |P|^{1/2}  \\
+ * \exp \left[ -\frac{p_4}{2} \left( Y_5  - m_4  \right)' P \left( Y_5 - m_4  \right)  \right] \\
+ * \exp \left[ -\frac{1}{2} \left(Y_3 - (1 - e^{-at_3}) \theta - e^{-at_3} Y_5 \right)' \frac{2a}{1-e^{-2at_3}}P \left( Y_3 - (1 - e^{-at_3}) \theta - e^{-at_3} Y_5  \right)   \right] \\
+=  \rho_4 ( e^{at_4} )^d ( e^{at_3} )^d  \left( \frac{p_4}{2 \pi} \right) ^{d/2}  \left( \frac{2a e^{-2at_3}}{ 2 \pi (1-e^{-2at_3}) } \right) ^{d/2} |P|^{1/2} |P|^{1/2}  \\
+ * \exp \left[ -\frac{p_4}{2} \left( Y_5  - m_4  \right)' P \left( Y_5 - m_4  \right)  \right] \\
+ * \exp \left[ -\frac{1}{2} \left(e^{at_3} Y_3 - (e^{at_3} - 1) \theta - Y_5 \right)' \frac{2a e^{-2at_3} }{1-e^{-2at_3}}P \left( e^{at_3} Y_3 - (e^{at_3} - 1) \theta - Y_5  \right)   \right] 
+\end{eqnarray}
+If we let  
+$m_3 = e^{at_3} Y_3 - (e^{at_3} - 1) \theta $ and $p_3 = \frac{2ae^{-2at_3}}{1-e^{-2at_3}} $ then we have 
+\begin{eqnarray}
+P(Y_1,Y_2| Y_5) P(Y_3 | Y_5) & = & \rho_4 ( e^{at_4} )^d ( e^{at_3} )^d \left( \frac{p_4}{2 \pi} \right) ^{d/2}  \left( \frac{ p_3 }{2 \pi} \right) ^{d/2} |P|^{1/2} |P|^{1/2}  \\
+& & * \exp \left[ -\frac{p_4}{2} \left( m_4  - Y_5  \right)' P \left( m_4 - Y_5  \right)  \right] \\
+ & & * \exp \left[ -\frac{ p_3 }{2} \left(m_3 - Y_5 \right)' P \left( m_3 - Y_5  \right)   \right] ,
+\end{eqnarray}
+which essentially reduces the computation to the same computation perfomed in (78).  Therefore, setting 
+$\underline{m}_5 = \frac{p_3 m_3 + p_4 m_4}{p_3 + p_4} $ and 
+\begin{equation}
+\rho_5 = ( e^{at_4} )^d ( e^{at_3} )^d \left( \frac{p_3 p_4}{2 \pi (p_3 + p_4)} \right)^{d/2}  |P|^{1/2} \frac {\exp \left[ -\frac{p_3}{2} m_3' P m_3 -\frac{p_4}{2}m_4'P m_4  \right] }
+{ \exp \left[ -\frac{p_3 + p_4}{2} \underline{m}_5' P \underline{m}_5 \right] } ,
+\end{equation}
+we obtain
+\begin{equation}
+P(Y_1,Y_2 | Y_5) P(Y_3 | Y_5) = \rho_4 \times \rho_5 \times MVN (Y_5 ; \underline{m}_5, (p_3 + p_4)P) .
+\end{equation}
+Next, 
+\begin{eqnarray}
+P(Y_1,Y_2 | Y_5) P(Y_3 | Y_5) P(Y_5) & = & \rho_4 \times \rho_5 \times MVN (Y_5 ; \underline{m}_5, (p_3 + p_4)P) \\
+& & \times MVN(Y_5; \mu*, \phi P),
+\end{eqnarray}
+which is equal to
+\begin{eqnarray}
+& & \rho_4 \times \rho_5 \times MVN (Y_5 ; \underline{m}_5, (p_3 + p_4)P) \times MVN(Y_5; \mu*, \phi P) \\
+& = & \rho_4 \rho_5 \left( \frac{p_3 + p_4}{2 \pi} \right) ^{d/2}  \left( \frac{ \phi }{2 \pi} \right) ^{d/2} |P|^{1/2} |P|^{1/2} \\
+& & \times \exp \left[ -\frac{ p_3 + p_4 }{2} \left( Y_5  - \underline{m}_5  \right)' P \left( Y_5 - \underline{m}_5  \right)  \right] \\
+& &  \times \exp \left[ -\frac{\phi}{2} \left( Y_5  - \mu*  \right)' P \left( Y_5 - \mu*  \right)  \right]  \\
+& = & \rho_4 \times \rho_5 \times MVN \left(Y_5; \frac{\phi \mu* + (p_4 + p_3) \underline{m}_5 }{\phi + p_4 + p_3}, \phi + p_4 + p_3 \right) \\
+& & \times MVN \left(\underline{m}_5;\mu*, \frac{(p_4 + p_3)\phi}{p_4 + p_3 + \phi} \right) .
+\end{eqnarray}
+Therefore
+\begin{eqnarray}
+P(Y_1,Y_2,Y_3) & = & \int P(Y_1,Y_2| Y_5) P(Y_3 | Y_5) P(Y_5) dY_5 \\
+& = & \rho_4 \times \rho_5 \times MVN(\underline{m}_5;\mu*, \frac{(p_4 + p_3)\phi}{p_4 + p_3 + \phi}) \\
+& & \times \int MVN \left(Y_5; \frac{\phi \mu* + (p_4 + p_3) \underline{m}_5 }{\phi + p_4 + p_3}, \phi + p_4 + p_3 \right) dY_5 \\
+& = & \rho_4 \times \rho_5 \times MVN \left(\underline{m}_5;\mu*, \frac{(p_4 + p_3)\phi}{p_4 + p_3 + \phi} \right) .
+\end{eqnarray}
+\par
+We can generalize this dynamic programming approach as follows.  Let $\{Y_i \}$ denote the set of observed trait values descendant from and including
+$V_i$.  Then if $pa(i) = pa(j) = k$, we wish to compute
+\begin{equation}
+P( \{Y_i \}, \{ Y_j \} | Y_{pa(k)} ) = \int P(\{Y_i \} | Y_k) P(\{Y_j \} | Y_k) P(Y_k | Y_{pa(k)}) dY_k .
+\end{equation}
+For $i = 1, \dots , N$, set $m_i = e^{at_i} Y_i - (e^{at_i} - 1) \theta $ and $p_i = \frac{2ae^{-2at_i}}{1-e^{-2at_i}} $.  Then
+\begin{eqnarray}
+P(\{Y_i \} | Y_k) P(\{Y_j \} | Y_k) & = &  ( e^{at_i} )^d \left( \frac{p_i}{2 \pi} \right) ^{d/2} |P|^{1/2}
+\exp \left[ -\frac{p_i}{2}(m_i - Y_k)' P (m_i - Y_k)    \right]  \\
+& & \times ( e^{at_j} )^d \left( \frac{p_j}{2 \pi} \right) ^{d/2} |P|^{1/2} \exp \left[ -\frac{p_j}{2}(m_j - Y_k)' P (m_j - Y_k)    \right] \\
+& = & \rho_k \times MVN(Y_k; \underline{m}_k, (p_i + p_j) P)
+\end{eqnarray}
+where 
+\begin{equation}
+\underline{m}_k = \frac{p_i m_i + p_j m_j}{p_i + p_j} ,
+\end{equation}
+and
+\begin{equation}
+\rho_k =  ( e^{at_i} )^d ( e^{at_j} )^d \left( \frac{p_i p_j}{2 \pi (p_i + p_j)} \right)^{d/2}  |P|^{1/2} \frac {\exp \left[ -\frac{p_i}{2} m_i' P m_i -\frac{p_j}{2}m_j'P m_j  \right] }
+{ \exp \left[ -\frac{p_i + p_j}{2} \underline{m}_k' P \underline{m}_k \right] } .
+\end{equation}
+Multiplying by $P(Y_k | Y_{pa(k)})$ and integrating with respect to $Y_k$, we get 
+\begin{eqnarray}
+P( \{Y_i \}, \{Y_j \} | Y_{pa(k)} ) & = & \int P(\{Y_i \} | Y_k) P(\{Y_j \} | Y_k) P(Y_k | Y_{pa(k)}) dY_k \\
+& = &  \rho_k ( e^{at_k} )^d \times MVN(Y_k; m_k, p_k P),
+\end{eqnarray}
+where
+\begin{equation}
+m_k = e^{at_k} ( \underline{m}_k - (1 - e^{-at_k}) \theta ), 
+\end{equation}
+and 
+\begin{equation}
+p_k = \frac{e^{-2at_k}}{  \frac{1}{\frac{2a}{1-e^{-2at_k}}}  + \frac{1}{p_i + p_j} } 
+\end{equation}
+Continuing like this in a post-order traversal yields $P(Y_1,\dots,Y_N | Y_{2N-1})$, and the density of
+the observed traits is
+\begin{eqnarray}
+P(Y_1,\dots,Y_N) & = & \int P(Y_1,\dots,Y_N | Y_{2N-1}) P(Y_{2N-1}) dY_{2N-1} \\
+& = & \left( \prod_{k=N+1}^{2N-1} \rho_k \right) MVN(\underline{m}_{2N-1};\mu*, p_{2N-1} P) .
+\end{eqnarray}
+To place a prior over the diffusion rates, we assume that the matrix $P$ follows a Wishart distribution with degrees
+of freedom $v$ and scale matrix $V$.  The Wishart distribution is conjugate to the Brownian diffusion likelihood: 
+$P(P | Y_1,\dots,Y_N) \propto  P(Y_1,\dots,Y_N |P) P(P)$ has a Wishart distribution with $N+v$ degrees of freedom and scale matrix
+\begin{equation*}
+\left( V^{-1} + p_{2N-1}(\underline{m}_{2N-1} - \mu*)(\underline{m}_{2N-1} - \mu*)'  
++ \sum_{k=N+1}^{2N-1} [ p_i m_i m'_i + p_j m_j m'_j - (p_i + p_j)\underline{m}_k \underline{m}'_k]  \right)^{-1} . 
+\end{equation*}
+
+
+
+
+
+
+
+
+
+\bibliography{list_of_references}
+
+\end{document}
